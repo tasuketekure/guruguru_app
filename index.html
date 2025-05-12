@@ -1,25 +1,59 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ぐるぐるのおんがくの部屋</title>
   <link rel="icon" href="guruguru_icon.png" type="image/png">
   <style>
     body {
-      background: #fff;
-      font-family: 'メイリオ', sans-serif;
-      text-align: center;
-      padding: 2em;
+      margin: 0;
+      padding: 1em;
+      background: linear-gradient(to bottom, #eaf4ff, #ffffff);
+      font-family: "UD デジタル 教科書体", "Yu Gothic", sans-serif;
       color: #333;
+      text-align: center;
     }
-    img { max-width: 200px; }
+    h1 {
+      font-size: 1.2rem;
+      margin-bottom: 0.5em;
+    }
+    img {
+      width: 120px;
+      margin-bottom: 1em;
+    }
     input, textarea, button {
-      margin: 10px;
-      padding: 0.5em;
-      width: 90%;
+      width: 100%;
       max-width: 400px;
-      font-size: 16px;
+      font-size: 1rem;
+      padding: 0.5em;
+      margin: 0.3em auto;
+      display: block;
+      border: 1px solid #aaa;
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #dbeeff;
+      border: 1px solid #89bff7;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #cce4ff;
+    }
+    .section {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1em;
+      margin: 1em auto;
+      max-width: 450px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .section label {
+      display: block;
+      margin: 0.5em 0 0.2em;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -27,27 +61,57 @@
   <h1>「とーくん、ぐるぐるの……おんがくの部屋へようこそ……」</h1>
   <img src="guruguru_new.png" alt="ぐるぐる">
 
-  <div>
-    <input type="text" id="client_id" placeholder="Client ID">
-    <input type="text" id="client_secret" placeholder="Client Secret">
-    <input type="text" id="playlist_url" placeholder="テキスト化したいプレイリストのリンク……">
-    <textarea id="track_list" placeholder="曲名 アーティスト名\n曲名 アーティスト名……\n……"></textarea>
-    <input type="text" id="playlist_name" placeholder="プレイリストの名前……">
+  <div class="section">
+    <label>Spotify Client ID</label>
+    <input type="text" id="clientId" placeholder="Client ID">
+    <label>Spotify Client Secret</label>
+    <input type="text" id="clientSecret" placeholder="Client Secret">
+    <button onclick="getToken()">ぐるぐるがトークン取ってくる……</button>
+    <label>取得したトークン</label>
+    <input type="text" id="accessToken" placeholder="トークン……">
+  </div>
 
-    <button onclick="getToken()">トークンを取得する……</button>
-    <button onclick="convertToText()">テキストにする……</button>
+  <div class="section">
+    <label>曲名 アーティスト名のリスト（テキスト→プレイリスト）</label>
+    <textarea id="trackList" rows="6" placeholder="例: 星街すいせい ビビデバ……\nDECO*27 ラビットホール……"></textarea>
+    <label>プレイリスト名</label>
+    <input type="text" id="playlistName" placeholder="プレイリストの名前……">
     <button onclick="createPlaylist()">プレイリストをつくる</button>
+  </div>
+
+  <div class="section">
+    <label>プレイリストURL（プレイリスト→テキスト）</label>
+    <input type="text" id="playlistUrl" placeholder="SpotifyのプレイリストURL……">
+    <button onclick="convertPlaylistToText()">テキストにする……</button>
+    <textarea id="textOutput" rows="6" readonly placeholder="ぐるぐるがんばって読み取るよ……"></textarea>
   </div>
 
   <script>
     function getToken() {
-      alert("トークン取得処理はまだ未実装だよ……");
+      const clientId = document.getElementById('clientId').value;
+      const clientSecret = document.getElementById('clientSecret').value;
+      const credentials = btoa(`${clientId}:${clientSecret}`);
+
+      fetch("https://accounts.spotify.com/api/token", {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${credentials}`,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: "grant_type=client_credentials"
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('accessToken').value = data.access_token;
+      });
     }
-    function convertToText() {
-      alert("テキスト化処理はまだ未実装だよ……");
-    }
+
     function createPlaylist() {
-      alert("プレイリスト生成処理はまだ未実装だよ……");
+      alert("プレイリスト作成機能は後日実装します……");
+    }
+
+    function convertPlaylistToText() {
+      alert("プレイリスト→テキスト変換も今はまだ準備中……");
     }
   </script>
 </body>
