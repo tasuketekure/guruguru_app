@@ -1,1 +1,121 @@
-<!DOCTYPE html><html><body><h2>準備完了</h2></body></html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ぐるぐるの音楽の部屋</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" href="guruguru_icon.png">
+  <style>
+    body { background: black; color: white; font-family: 'メイリオ', sans-serif; text-align: center; padding: 2em; }
+    button, input, textarea { margin: 10px; padding: 10px; border-radius: 10px; font-size: 1em; width: 80%; max-width: 500px; border: none; }
+    button { background: #444; color: white; cursor: pointer; }
+    button:hover { background: #666; }
+    #guru { width: 200px; margin-top: 20px; }
+    .bubble { background: rgba(255,255,255,0.1); padding: 1em; border-radius: 1em; max-width: 90%; margin: 1em auto; }
+  </style>
+</head>
+<body>
+  <h2>ぐるぐるの音楽の部屋（Spotifyログイン版）</h2>
+  <img id="guru" src="guruguru_new.png" alt="ぐるぐる">
+  <div class="bubble">「Spotifyにログインして、いっしょにプレイリストつくるの……」</div>
+  <button onclick="login()">Spotifyにログインする</button>
+
+  <div class="bubble">「てきすとで、つくりたい……おうた……ある？」</div>
+  <textarea id="tracks" placeholder="群青 YOASOBI\nミラクルペイント 初音ミク\n..."></textarea>
+  <input type="text" id="playlistName" placeholder="プレイリストの名前…">
+  <button onclick="createPlaylist()">プレイリストをつくる</button>
+
+  <div class="bubble">「これ……てきすとにしたい……ぷれいりすと……ぺたって……」</div>
+  <input type="text" id="playlistURL" placeholder="SpotifyプレイリストのURL">
+  <button onclick="convertToText()">テキストにする</button>
+
+  <pre id="result" class="bubble"></pre>
+
+  <script>
+    const clientId = "432f0e37d0ef4484bcf2dbb90b06b52c";
+    const redirectUri = "https://tasuketekure.github.io/guruguru_app/";
+    const scopes = "playlist-modify-public playlist-modify-private user-read-private";
+
+    function login() {
+      const url = "https://accounts.spotify.com/authorize" +
+        "?response_type=token" +
+        "&client_id=" + encodeURIComponent(clientId) +
+        "&scope=" + encodeURIComponent(scopes) +
+        "&redirect_uri=" + encodeURIComponent(redirectUri);
+      window.location.href = url;
+    }
+
+    function getToken() {
+      const hash = window.location.hash;
+      if (hash.includes("access_token")) {
+        return new URLSearchParams(hash.slice(1)).get("access_token");
+      }
+      return null;
+    }
+
+    async function createPlaylist() {
+      const token = getToken();
+      if (!token) return alert("とーくん、ないよ……");
+
+      const trackList = document.getElementById("tracks").value.trim().split("\n");
+      const playlistName = document.getElementById("playlistName").value || "ぐるぐるのプレイリスト";
+      const uris = [];
+
+      for (let line of trackList) {
+        const q = encodeURIComponent(line);
+        const res = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`, {
+          headers: { Authorization: "Bearer " + token }
+        });
+        const data = await res.json();
+        if (data.tracks.items.length > 0) {
+          uris.push(data.tracks.items[0].uri);
+        }
+      }
+
+      const userRes = await fetch("https://api.spotify.com/v1/me", {
+        headers: { Authorization: "Bearer " + token }
+      });
+      const user = await userRes.json();
+
+      const plRes = await fetch(`https://api.spotify.com/v1/users/${user.id}/playlists`, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name: playlistName, public: false })
+      });
+      const playlist = await plRes.json();
+
+      await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ uris })
+      });
+
+      document.getElementById("result").innerText = "できたよ……\n" + playlist.external_urls.spotify;
+    }
+
+    async function convertToText() {
+      const token = getToken();
+      const url = document.getElementById("playlistURL").value.trim();
+      const id = url.split("playlist/")[1]?.split("?")[0];
+      if (!token || !id) return alert("とーくん、ないかも……");
+
+      const res = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks`, {
+        headers: { Authorization: "Bearer " + token }
+      });
+      const data = await res.json();
+
+      const lines = data.items.map(i =>
+        `${i.track.name} - ${i.track.artists.map(a => a.name).join(', ')}`
+      ).join("\n");
+
+      document.getElementById("result").innerText = lines;
+    }
+  </script>
+</body>
+</html>
