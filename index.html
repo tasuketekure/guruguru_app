@@ -1,1 +1,54 @@
-<!DOCTYPE html><html><head><title>再構築中</title></head><body>ぐるぐる再構築中……</body></html>
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ぐるぐるのおんがくの部屋</title>
+  <link rel="icon" href="guruguru_icon.png" type="image/png">
+  <style>
+    body {
+      background: #fff;
+      font-family: 'メイリオ', sans-serif;
+      text-align: center;
+      padding: 2em;
+      color: #333;
+    }
+    img { max-width: 200px; }
+    input, textarea, button {
+      margin: 10px;
+      padding: 0.5em;
+      width: 90%;
+      max-width: 400px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>「とーくん、ぐるぐるの……おんがくの部屋へようこそ……」</h1>
+  <img src="guruguru_new.png" alt="ぐるぐる">
+
+  <div>
+    <input type="text" id="client_id" placeholder="Client ID">
+    <input type="text" id="client_secret" placeholder="Client Secret">
+    <input type="text" id="playlist_url" placeholder="テキスト化したいプレイリストのリンク……">
+    <textarea id="track_list" placeholder="曲名 アーティスト名\n曲名 アーティスト名……\n……"></textarea>
+    <input type="text" id="playlist_name" placeholder="プレイリストの名前……">
+
+    <button onclick="getToken()">トークンを取得する……</button>
+    <button onclick="convertToText()">テキストにする……</button>
+    <button onclick="createPlaylist()">プレイリストをつくる</button>
+  </div>
+
+  <script>
+    function getToken() {
+      alert("トークン取得処理はまだ未実装だよ……");
+    }
+    function convertToText() {
+      alert("テキスト化処理はまだ未実装だよ……");
+    }
+    function createPlaylist() {
+      alert("プレイリスト生成処理はまだ未実装だよ……");
+    }
+  </script>
+</body>
+</html>
