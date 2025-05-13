@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>ぐるぐるのおんがくの部屋</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="icon" href="guruguru_icon.png">
@@ -16,7 +16,7 @@
   </style>
 </head>
 <body>
-  <h2>ぐるぐるのおんがくの部屋（Spotifyログイン対応）</h2>
+  <h2>ぐるぐるのおんがくの部屋</h2>
   <img src="guruguru_new.png" width="160"><br>
 
   <button onclick="login()">Spotifyにログインする</button>
@@ -35,6 +35,7 @@
     const clientId = "432f0e37d0ef4484bcf2dbb90b06b52c";
     const redirectUri = "https://tasuketekure.github.io/guruguru_app/";
     const scopes = "playlist-modify-private playlist-modify-public user-read-private";
+    let token = "";
 
     function login() {
       const url = "https://accounts.spotify.com/authorize" +
@@ -45,15 +46,18 @@
       window.location.href = url;
     }
 
-    function getToken() {
+    function extractTokenFromHash() {
       const hash = window.location.hash;
-      if (!hash) return null;
-      const match = hash.match(/access_token=([^&]*)/);
-      return match ? match[1] : null;
+      if (!hash.includes("access_token")) return;
+      const params = new URLSearchParams(hash.substring(1));
+      token = params.get("access_token");
+      history.replaceState(null, null, window.location.pathname); // URLからトークンを消す
+      document.getElementById("result").textContent = "ログインできたよ……";
     }
 
+    window.onload = extractTokenFromHash;
+
     async function createPlaylist() {
-      const token = getToken();
       if (!token) return alert("ログインが必要です");
 
       const trackLines = document.getElementById("trackList").value.trim().split("\n");
@@ -96,10 +100,10 @@
     }
 
     async function convertToText() {
-      const token = getToken();
+      if (!token) return alert("ログインが必要です");
       const url = document.getElementById("playlistURL").value;
       const id = url.split("playlist/")[1]?.split("?")[0];
-      if (!id || !token) return alert("URLまたはトークンが足りないよ……");
+      if (!id) return alert("URLが正しくないかも……");
 
       const res = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks`, {
         headers: { Authorization: "Bearer " + token }
