@@ -2,95 +2,116 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ぐるぐるの音楽の部屋</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="icon" href="guruguru_icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ぐるぐるのおんがくの部屋</title>
+  <link rel="icon" href="guruguru_icon.png" type="image/png">
   <style>
-    body { background: #fff; font-family: 'メイリオ', sans-serif; color: #333; padding: 1em; text-align: center; }
-    img { width: 120px; }
+    body {
+      margin: 0;
+      padding: 1em;
+      background: linear-gradient(to bottom, #eaf4ff, #ffffff);
+      font-family: "UD デジタル 教科書体", "Yu Gothic", sans-serif;
+      color: #333;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.2rem;
+      margin-bottom: 0.5em;
+    }
+    img {
+      width: 120px;
+      margin-bottom: 1em;
+    }
     input, textarea, button {
-      width: 90%; max-width: 400px; font-size: 1rem;
-      padding: 0.6em; margin: 0.4em auto; border-radius: 8px;
-      display: block; box-sizing: border-box;
+      width: 100%;
+      max-width: 400px;
+      font-size: 1rem;
+      padding: 0.5em;
+      margin: 0.3em auto;
+      display: block;
+      border: 1px solid #aaa;
+      border-radius: 8px;
+      box-sizing: border-box;
     }
     button {
-      background: #dbeeff; border: 1px solid #89bff7; cursor: pointer;
+      background-color: #dbeeff;
+      border: 1px solid #89bff7;
+      cursor: pointer;
+      transition: background 0.3s;
     }
-    button:hover { background: #cce4ff; }
+    button:hover {
+      background-color: #cce4ff;
+    }
+    .section {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1em;
+      margin: 1em auto;
+      max-width: 450px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .section label {
+      display: block;
+      margin: 0.5em 0 0.2em;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <h2>「とーくん、ぐるぐるの……おんがくの部屋へようこそ……」</h2>
+  <h1>「とーくん、ぐるぐるの……おんがくの部屋へようこそ……」</h1>
   <img src="guruguru_new.png" alt="ぐるぐる">
-  <input type="text" id="clientId" placeholder="Client ID">
-  <input type="text" id="clientSecret" placeholder="Client Secret">
-  <button onclick="getToken()">トークンを取得する</button>
-  <input type="text" id="accessToken" placeholder="Access Token（手動）">
 
-  <textarea id="tracks" rows="6" placeholder="曲名 アーティスト名\n曲名 アーティスト名……\n……"></textarea>
-  <input type="text" id="playlistName" placeholder="プレイリストの名前……">
-  <button onclick="createPlaylist()">プレイリストをつくる</button>
+  <div class="section">
+    <label>Spotify Client ID</label>
+    <input type="text" id="clientId" placeholder="Client ID">
+    <label>Spotify Client Secret</label>
+    <input type="text" id="clientSecret" placeholder="Client Secret">
+    <button onclick="getToken()">ぐるぐるがトークン取ってくる……</button>
+    <label>取得したトークン</label>
+    <input type="text" id="accessToken" placeholder="トークン……">
+  </div>
 
-  <pre id="result" style="white-space: pre-wrap;"></pre>
+  <div class="section">
+    <label>曲名 アーティスト名のリスト（テキスト→プレイリスト）</label>
+    <textarea id="trackList" rows="6" placeholder="例: 星街すいせい ビビデバ……\nDECO*27 ラビットホール……"></textarea>
+    <label>プレイリスト名</label>
+    <input type="text" id="playlistName" placeholder="プレイリストの名前……">
+    <button onclick="createPlaylist()">プレイリストをつくる</button>
+  </div>
+
+  <div class="section">
+    <label>プレイリストURL（プレイリスト→テキスト）</label>
+    <input type="text" id="playlistUrl" placeholder="SpotifyのプレイリストURL……">
+    <button onclick="convertPlaylistToText()">テキストにする……</button>
+    <textarea id="textOutput" rows="6" readonly placeholder="ぐるぐるがんばって読み取るよ……"></textarea>
+  </div>
 
   <script>
-    let token = "";
-    async function getToken() {
-      const id = document.getElementById("clientId").value;
-      const secret = document.getElementById("clientSecret").value;
-      const res = await fetch("https://accounts.spotify.com/api/token", {
+    function getToken() {
+      const clientId = document.getElementById('clientId').value;
+      const clientSecret = document.getElementById('clientSecret').value;
+      const credentials = btoa(`${clientId}:${clientSecret}`);
+
+      fetch("https://accounts.spotify.com/api/token", {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Authorization": "Basic " + btoa(id + ":" + secret)
+          Authorization: `Basic ${credentials}`,
+          "Content-Type": "application/x-www-form-urlencoded"
         },
         body: "grant_type=client_credentials"
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('accessToken').value = data.access_token;
       });
-      const data = await res.json();
-      token = data.access_token;
-      document.getElementById("accessToken").value = token;
     }
 
-    async function createPlaylist() {
-      const accessToken = document.getElementById("accessToken").value || token;
-      const playlistName = document.getElementById("playlistName").value || "ぐるぐるのリスト";
-      const trackLines = document.getElementById("tracks").value.trim().split("\n");
-      const uris = [];
+    function createPlaylist() {
+      alert("プレイリスト作成機能は後日実装します……");
+    }
 
-      for (const line of trackLines) {
-        const q = encodeURIComponent(line);
-        const res = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`, {
-          headers: { Authorization: "Bearer " + accessToken }
-        });
-        const data = await res.json();
-        if (data.tracks.items.length > 0) uris.push(data.tracks.items[0].uri);
-      }
-
-      const userRes = await fetch("https://api.spotify.com/v1/me", {
-        headers: { Authorization: "Bearer " + accessToken }
-      });
-      const user = await userRes.json();
-
-      const plRes = await fetch(`https://api.spotify.com/v1/users/${user.id}/playlists`, {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + accessToken,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ name: playlistName, public: false })
-      });
-      const playlist = await plRes.json();
-
-      await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + accessToken,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ uris })
-      });
-
-      document.getElementById("result").textContent = "できたよ……\n" + playlist.external_urls.spotify;
+    function convertPlaylistToText() {
+      alert("プレイリスト→テキスト変換も今はまだ準備中……");
     }
   </script>
 </body>
