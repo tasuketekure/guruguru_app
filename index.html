@@ -124,29 +124,33 @@
         const query = artist ? `track:${title} artist:${artist}` : `track:${title}`;
         const q = encodeURIComponent(query);
 
-        const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=5`, {
-          headers: { Authorization: "Bearer " + accessToken }
-        });
-        const data = await searchRes.json();
-        let best = null;
+        try {
+          const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=5`, {
+            headers: { Authorization: "Bearer " + accessToken }
+          });
+          const data = await searchRes.json();
 
-        if (data.tracks && data.tracks.items.length > 0) {
-          for (let track of data.tracks.items) {
-            const titleMatch = track.name.toLowerCase().includes(title.toLowerCase());
-            const artistMatch = track.artists.some(a => a.name.toLowerCase().includes(artist.toLowerCase()));
-            if (titleMatch && artistMatch) {
-              best = track;
-              break;
+          let best = null;
+          if (data.tracks && data.tracks.items.length > 0) {
+            for (let track of data.tracks.items) {
+              const titleMatch = track.name?.toLowerCase().includes(title.toLowerCase());
+              const artistMatch = artist ? track.artists.some(a => a.name?.toLowerCase().includes(artist.toLowerCase())) : true;
+              if (titleMatch && artistMatch) {
+                best = track;
+                break;
+              }
             }
+            if (!best) best = data.tracks.items[0];
           }
-          if (!best) best = data.tracks.items[0];
-        }
 
-        if (best) {
-          uris.push(best.uri);
-          feedback += `◎ ${best.name} - ${best.artists.map(a => a.name).join(", ")}\n`;
-        } else {
-          feedback += `× 見つからなかった: ${line}\n`;
+          if (best) {
+            uris.push(best.uri);
+            feedback += `◎ ${best.name} - ${best.artists.map(a => a.name).join(", ")}\n`;
+          } else {
+            feedback += `× 見つからなかった: ${line}\n`;
+          }
+        } catch (e) {
+          feedback += `× エラー発生: ${line}\n`;
         }
       }
 
