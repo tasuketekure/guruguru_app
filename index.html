@@ -45,6 +45,14 @@
       max-width: 520px;
       background-color: #f9f9f9;
     }
+    #feedback {
+      font-size: 14px;
+      margin-top: 10px;
+      white-space: pre-wrap;
+      background: #eef;
+      padding: 10px;
+      border-radius: 5px;
+    }
   </style>
 </head>
 <body>
@@ -57,9 +65,10 @@
 
   <div class="section">
     <h3>テキスト → プレイリスト</h3>
-    <textarea id="playlistInput" placeholder="曲名 アーティスト名\n曲名 アーティスト名……\n"></textarea>
+    <textarea id="playlistInput" placeholder="曲名 アーティスト名\n曲名 アーティスト名……"></textarea>
     <input id="playlistName" type="text" placeholder="プレイリストの名前……" />
     <button onclick="createPlaylist()">プレイリストをつくる</button>
+    <div id="feedback"></div>
   </div>
 
   <div class="section">
@@ -81,9 +90,13 @@
 
     async function createPlaylist() {
       if (!accessToken) return alert("Spotifyにログインしてね……");
-      const name = document.getElementById("playlistName").value;
-      const lines = document.getElementById("playlistInput").value.trim().split("\n");
+      const name = document.getElementById("playlistName").value.trim();
+      const rawLines = document.getElementById("playlistInput").value.trim().split("\n");
+      const lines = rawLines.map(line =>
+        line.replace(/　/g, " ").replace(/\s+/g, " ").trim()
+      ).filter(Boolean);
       const uris = [];
+      let feedback = "";
 
       const userRes = await fetch("https://api.spotify.com/v1/me", {
         headers: { Authorization: "Bearer " + accessToken }
@@ -105,16 +118,39 @@
       const playlist = await newPlaylistRes.json();
 
       for (let line of lines) {
-        const [title, artist] = line.split(/\s+/);
-        const q = encodeURIComponent(`track:${title} artist:${artist}`);
-        const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`, {
+        const parts = line.split(" ");
+        const title = parts[0] || "";
+        const artist = parts.slice(1).join(" ");
+        const query = artist ? `track:${title} artist:${artist}` : `track:${title}`;
+        const q = encodeURIComponent(query);
+
+        const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=5`, {
           headers: { Authorization: "Bearer " + accessToken }
         });
         const data = await searchRes.json();
+        let best = null;
+
         if (data.tracks && data.tracks.items.length > 0) {
-          uris.push(data.tracks.items[0].uri);
+          for (let track of data.tracks.items) {
+            const titleMatch = track.name.toLowerCase().includes(title.toLowerCase());
+            const artistMatch = track.artists.some(a => a.name.toLowerCase().includes(artist.toLowerCase()));
+            if (titleMatch && artistMatch) {
+              best = track;
+              break;
+            }
+          }
+          if (!best) best = data.tracks.items[0];
+        }
+
+        if (best) {
+          uris.push(best.uri);
+          feedback += `◎ ${best.name} - ${best.artists.map(a => a.name).join(", ")}\n`;
+        } else {
+          feedback += `× 見つからなかった: ${line}\n`;
         }
       }
+
+      document.getElementById("feedback").textContent = feedback;
 
       if (uris.length > 0) {
         await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
@@ -125,9 +161,10 @@
           },
           body: JSON.stringify({ uris })
         });
+        alert("できたよ……プレイリスト……\n" + playlist.external_urls.spotify);
+      } else {
+        alert("曲がひとつも見つからなかったの……ごめんね");
       }
-
-      alert("できたよ……プレイリスト……\n" + playlist.external_urls.spotify);
     }
 
     async function convertPlaylistToText() {
