@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="ja">
+
+<!DOCTYPE html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,7 +10,6 @@
     body {
       font-family: "游ゴシック体", YuGothic, sans-serif;
       background-color: #fff;
-      margin: 0;
       padding: 20px;
       text-align: center;
       color: #222;
@@ -36,73 +37,78 @@
     button:hover {
       background-color: #bbd;
     }
+    .section {
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 15px;
+      margin: 20px auto;
+      max-width: 520px;
+      background-color: #f9f9f9;
+    }
   </style>
 </head>
 <body>
   <h2>「とーくん、ぐるぐるの……おんがくの部屋へようこそ……」</h2>
   <img src="guruguru_new.png" alt="ぐるぐる" />
-  <button onclick="loginWithSpotify()">Spotifyにログインする……</button>  
-  <textarea id="playlistInput" placeholder="曲名 アーティスト名
-曲名 アーティスト名……
-"></textarea>  
-  <input id="playlistName" type="text" placeholder="プレイリストの名前……" />
-  <button onclick="createPlaylist()">プレイリストをつくる</button>
-  <button onclick="convertToText()">テキストにする……</button>
+
+  <div class="section">
+    <button onclick="loginWithSpotify()">Spotifyにログインする……</button>
+  </div>
+
+  <div class="section">
+    <h3>テキスト → プレイリスト</h3>
+    <textarea id="playlistInput" placeholder="曲名 アーティスト名\n曲名 アーティスト名……\n"></textarea>
+    <input id="playlistName" type="text" placeholder="プレイリストの名前……" />
+    <button onclick="createPlaylist()">プレイリストをつくる</button>
+  </div>
+
+  <div class="section">
+    <h3>テキスト化したいプレイリストのURL</h3>
+    <input id="playlistUrl" type="text" placeholder="https://open.spotify.com/playlist/..." />
+    <button onclick="convertPlaylistToText()">テキスト化してダウンロード</button>
+    <pre id="playlistTextOutput"></pre>
+  </div>
+
   <script>
     const clientId = "432f0e37d0ef4484bcf2dbb90b06b52c";
     const redirectUri = "https://tasuketekure.github.io/guruguru_app/";
     let accessToken = "";
 
     function loginWithSpotify() {
-      const url = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
+      const url = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public playlist-read-private`;
       window.location.href = url;
     }
 
-    function convertToText() {
-      const input = document.getElementById("playlistInput").value.trim();
-      const blob = new Blob([input], { type: "text/plain" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "playlist.txt";
-      a.click();
-    }
-
     async function createPlaylist() {
-      if (!accessToken) {
-        alert("Spotifyにログインしてね……");
-        return;
-      }
+      if (!accessToken) return alert("Spotifyにログインしてね……");
       const name = document.getElementById("playlistName").value;
-      const input = document.getElementById("playlistInput").value.trim().split("\n");
+      const lines = document.getElementById("playlistInput").value.trim().split("\n");
+      const uris = [];
 
-      const userRes = await fetch("https://api.spotify.com/v1/me", {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      const userData = await userRes.json();
-      const userId = userData.id;
-
-      const playlistRes = await fetch(`https://api.spotify.com/v1/users/${userId}/playlists`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ name })
-      });
-      const playlist = await playlistRes.json();
-      const trackUris = [];
-
-      for (let line of input) {
+      for (let line of lines) {
         const [title, artist] = line.split(/\s+/);
         const q = encodeURIComponent(`track:${title} artist:${artist}`);
         const res = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`, {
           headers: { Authorization: `Bearer ${accessToken}` }
         });
         const data = await res.json();
-        if (data.tracks.items[0]) {
-          trackUris.push(data.tracks.items[0].uri);
-        }
+        if (data.tracks.items[0]) uris.push(data.tracks.items[0].uri);
       }
+
+      const userRes = await fetch("https://api.spotify.com/v1/me", {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const user = await userRes.json();
+
+      const playlistRes = await fetch(`https://api.spotify.com/v1/users/${user.id}/playlists`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name, public: false })
+      });
+      const playlist = await playlistRes.json();
 
       await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
         method: "POST",
@@ -110,9 +116,36 @@
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ uris: trackUris })
+        body: JSON.stringify({ uris })
       });
+
       alert("できたよ……プレイリスト……");
+    }
+
+    async function convertPlaylistToText() {
+      if (!accessToken) return alert("Spotifyにログインしてね……");
+      const url = document.getElementById("playlistUrl").value;
+      const id = url.split("playlist/")[1]?.split("?")[0];
+      if (!id) return alert("URLが正しくないかも……");
+
+      const res = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const data = await res.json();
+
+      const lines = data.items.map(i => {
+        const title = i.track.name;
+        const artist = i.track.artists.map(a => a.name).join(", ");
+        return `${title}　${artist}`;
+      }).join("\n");
+
+      document.getElementById("playlistTextOutput").textContent = lines;
+
+      const blob = new Blob([lines], { type: "text/plain" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "playlist.txt";
+      a.click();
     }
 
     window.onload = async () => {
