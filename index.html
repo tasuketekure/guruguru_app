@@ -1,143 +1,83 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ぐるぐるのおんがくの部屋</title>
-  <link rel="icon" type="image/png" href="./guruguru_icon.png" />
-  <style>
-    body {
-      font-family: "游ゴシック体", YuGothic, sans-serif;
-      background-color: #fff;
-      margin: 0;
-      padding: 20px;
-      text-align: center;
-      color: #222;
-    }
-    img {
-      max-width: 200px;
-      margin: 10px auto;
-    }
-    input, textarea, button {
-      width: 90%;
-      max-width: 500px;
-      margin: 10px auto;
-      padding: 10px;
-      font-size: 16px;
-      display: block;
-      border: 1px solid #aaa;
-      border-radius: 5px;
-    }
-    button {
-      background-color: #cce;
-      color: #222;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #bbd;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>ぐるぐるの音楽の部屋</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            background-color: #fdfdfd;
+            color: #333;
+            font-family: "メイリオ", sans-serif;
+            text-align: center;
+            padding: 2em;
+        }
+        h1 {
+            color: #444;
+            font-size: 1.5em;
+        }
+        .image {
+            width: 150px;
+        }
+        .input-area {
+            margin: 1em auto;
+            max-width: 90%;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 0.5em;
+            margin-top: 0.5em;
+            border-radius: 5px;
+            border: 1px solid #aaa;
+            font-size: 1em;
+        }
+        .output {
+            white-space: pre-wrap;
+            margin-top: 1em;
+            background: #eef;
+            padding: 1em;
+            border-radius: 10px;
+        }
+    </style>
 </head>
 <body>
-  <h2>「とーくん、ぐるぐるの……おんがくの部屋へようこそ……」</h2>
-  <img src="guruguru_new.png" alt="ぐるぐる" />
-  <button onclick="loginWithSpotify()">Spotifyにログインする……</button>
+    <h1>「とーくん、ぐるぐるの……おんがくの部屋へようこそ……」</h1>
+    <img src="guruguru_new.png" class="image" alt="ぐるぐる">
 
-  <textarea id="playlistInput" placeholder="曲名 アーティスト名\n曲名 アーティスト名……\n"></textarea>
-  <input id="playlistName" type="text" placeholder="プレイリストの名前……" />
-  <button onclick="createPlaylist()">プレイリストをつくる</button>
-  <button onclick="convertToText()">テキストにする……</button>
+    <div class="input-area">
+        <label>Spotify プレイリストのURL：</label>
+        <input id="playlistUrl" placeholder="https://open.spotify.com/playlist/...">
 
-  <script>
-    const clientId = "432f0e37d0ef4484bcf2dbb90b06b52c";
-    const redirectUri = "https://tasuketekure.github.io/guruguru_app/";
-    let accessToken = "";
+        <button onclick="downloadText()">テキスト化してダウンロード</button>
 
-    function loginWithSpotify() {
-      const url = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
-      window.location.href = url;
-    }
+        <div id="output" class="output"></div>
+    </div>
 
-    function convertToText() {
-      const input = document.getElementById("playlistInput").value.trim();
-      const blob = new Blob([input], { type: "text/plain" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "playlist.txt";
-      a.click();
-    }
-
-    async function createPlaylist() {
-      if (!accessToken) {
-        alert("Spotifyにログインしてね……");
-        return;
-      }
-      const name = document.getElementById("playlistName").value;
-      const input = document.getElementById("playlistInput").value.trim().split("\n");
-
-      const userRes = await fetch("https://api.spotify.com/v1/me", {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      const userData = await userRes.json();
-      const userId = userData.id;
-
-      const playlistRes = await fetch(`https://api.spotify.com/v1/users/${userId}/playlists`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ name })
-      });
-      const playlist = await playlistRes.json();
-      const trackUris = [];
-
-      for (let line of input) {
-        const [title, artist] = line.split(/\s+/);
-        const q = encodeURIComponent(`track:${title} artist:${artist}`);
-        const res = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        const data = await res.json();
-        if (data.tracks.items[0]) {
-          trackUris.push(data.tracks.items[0].uri);
+    <script>
+        function simulateTrackListExtraction(url) {
+            if (!url.includes("spotify.com/playlist")) {
+                return "プレイリストのURLを正しく入力してね……";
+            }
+            const dummyTracks = [
+                "ビビデバ　星街すいせい",
+                "ラビットホール　DECO*27",
+                "Bling-Bang-Bang-Born　Creepy Nuts"
+            ];
+            return dummyTracks.join("\n");
         }
-      }
 
-      await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ uris: trackUris })
-      });
-      alert("できたよ……プレイリスト……");
-    }
+        function downloadText() {
+            const url = document.getElementById("playlistUrl").value;
+            const result = simulateTrackListExtraction(url);
+            document.getElementById("output").textContent = result;
 
-    // アクセストークン取得処理
-    window.onload = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get("code");
-      if (code) {
-        const creds = btoa("432f0e37d0ef4484bcf2dbb90b06b52c:2e2bd7d2b8144b96a2d657aec50a9995");
-        const res = await fetch("https://accounts.spotify.com/api/token", {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${creds}`,
-            "Content-Type": "application/x-www-form-urlencoded"
-          },
-          body: new URLSearchParams({
-            grant_type: "authorization_code",
-            code,
-            redirect_uri: redirectUri
-          })
-        });
-        const data = await res.json();
-        accessToken = data.access_token;
-      }
-    };
-  </script>
+            const blob = new Blob([result], { type: "text/plain" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "playlist.txt";
+            link.click();
+        }
+    </script>
 </body>
 </html>
