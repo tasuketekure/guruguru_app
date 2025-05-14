@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ぐるぐるのおんがくの部屋</title>
-  <link rel="icon" type="image/png" href="./guruguru_icon.png" />
+  <link rel="icon" href="./guruguru_icon.png" />
   <style>
     body {
       font-family: "游ゴシック体", YuGothic, sans-serif;
@@ -58,26 +58,22 @@
 <body>
   <h2>「とーくん、ぐるぐるの……おんがくの部屋へようこそ……」</h2>
   <img src="guruguru_new.png" alt="ぐるぐる" />
-
   <div class="section">
     <button onclick="loginWithSpotify()">Spotifyにログインする……</button>
   </div>
-
   <div class="section">
     <h3>テキスト → プレイリスト</h3>
-    <textarea id="playlistInput" placeholder="曲名 - アーティスト名 などもOK"></textarea>
+    <textarea id="playlistInput" placeholder="曲名 - アーティスト名..."></textarea>
     <input id="playlistName" type="text" placeholder="プレイリストの名前……" />
     <button onclick="createPlaylist()">プレイリストをつくる</button>
     <div id="feedback"></div>
   </div>
-
   <div class="section">
     <h3>テキスト化したいプレイリストのURL</h3>
     <input id="playlistUrl" type="text" placeholder="https://open.spotify.com/playlist/..." />
     <button onclick="convertPlaylistToText()">テキスト化してダウンロード</button>
     <pre id="playlistTextOutput"></pre>
   </div>
-
   <script>
     const clientId = "432f0e37d0ef4484bcf2dbb90b06b52c";
     const redirectUri = "https://tasuketekure.github.io/guruguru_app/";
@@ -89,9 +85,7 @@
     }
 
     function parseLine(line) {
-      // 先頭の数字や記号を除去
       line = line.replace(/^\s*\d+[\.\)]?\s*/, "").trim();
-      // 区切り文字で分割（柔軟対応）
       let parts = line.split(/[-–—~|/,:\t]/).map(p => p.trim()).filter(p => p);
       if (parts.length >= 2) {
         return { title: parts[0], artist: parts.slice(1).join(" ") };
@@ -166,19 +160,24 @@
 
       document.getElementById("feedback").textContent = feedback;
 
-      if (uris.length > 0) {
+      // 複数分割送信
+      const chunks = [];
+      for (let i = 0; i < uris.length; i += 100) {
+        chunks.push(uris.slice(i, i + 100));
+      }
+
+      for (const chunk of chunks) {
         await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
           method: "POST",
           headers: {
             Authorization: "Bearer " + accessToken,
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ uris })
+          body: JSON.stringify({ uris: chunk })
         });
-        alert("できたよ……プレイリスト……\n" + playlist.external_urls.spotify);
-      } else {
-        alert("曲がひとつも見つからなかったの……ごめんね");
       }
+
+      alert("できたよ……プレイリスト……\n" + playlist.external_urls.spotify);
     }
 
     async function convertPlaylistToText() {
@@ -187,12 +186,21 @@
       const id = url.split("playlist/")[1]?.split("?")[0];
       if (!id) return alert("URLが正しくないかも……");
 
-      const res = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks`, {
-        headers: { Authorization: "Bearer " + accessToken }
-      });
-      const data = await res.json();
+      let offset = 0;
+      const limit = 100;
+      let allItems = [];
 
-      const lines = data.items.map(i => {
+      while (true) {
+        const res = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=${limit}&offset=${offset}`, {
+          headers: { Authorization: "Bearer " + accessToken }
+        });
+        const data = await res.json();
+        if (!data.items || data.items.length === 0) break;
+        allItems = allItems.concat(data.items);
+        offset += limit;
+      }
+
+      const lines = allItems.map(i => {
         const title = i.track.name;
         const artist = i.track.artists.map(a => a.name).join(", ");
         return `${title}　${artist}`;
